@@ -3,14 +3,18 @@
 #include <BLEServer.h>
 #include "ArduinoJson.h"
 #include "ReceiveCallBack.h"
+#include "TrynkitOTAFirmware.h"
 
-#define SERVICE_UUID           "0000ffe0-0000-1000-8000-00805f9b34fb" // UART service UUID
-#define CHARACTERISTIC_UUID_RX "80c78362-e3f9-11e8-9f32-f2801f1b9fd1"
-#define CHARACTERISTIC_UUID_TX "80c784ac-e3f9-11e8-9f32-f2801f1b9fd1"
+void setup() {
+  Serial.begin(115200);
 
-// Global Variables
-BLEServer *pServer = NULL;
-BLECharacteristic * pTxCharacteristic;
+  // Init BLE
+  initBLE();
+}
+
+void loop() {
+  
+}
 
 void initBLE() {
   BLEDevice::init("Trynkit Husky");
@@ -36,13 +40,46 @@ void reset() {
   ESP.restart();
 }
 
-void setup() {
-  Serial.begin(115200);
-
-  // Init BLE
-  initBLE();
+void MyServerCallbacks::onConnect(BLEServer* pServer) {
+  deviceConnected = true;
 }
 
-void loop() {
-  
+void MyServerCallbacks::onDisconnect(BLEServer* pServer) {
+  deviceConnected = false;
+}
+
+// Handles BLE receives for images and flashing
+void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
+  std::string rxVal = pCharacteristic->getValue();
+  String input = "";
+  if(rxVal.length() > 0) {
+    for(int i = 0; i < rxVal.length(); i++) {
+      if(i % 2 == 0) {
+        input += rxVal[i];
+      }
+    }
+
+    // BLE Flashing mode
+    if(receiveImage == true) {
+      image += input;
+      if(image.substring(image.length()-5, image.length()).equals("0x0FC")) {
+        return;
+      }
+    }
+
+    // Check for commands
+    if(input.equals("0x0FA")) { // Flash via BLE
+      transmitOut("0x0FB");
+      receiveImage = true;
+    }
+  }
+}
+
+void ReceiveCallBack::transmitOut(char* output) {
+  //Serial.println(output);
+  //memcpy(out_buff, output, sizeof(output));
+  for(int i = 0; i < sizeof(out_buff); i++) {
+    out_buff[i] = uint8_t(output[i]);
+  }
+  transmit = true;
 }
