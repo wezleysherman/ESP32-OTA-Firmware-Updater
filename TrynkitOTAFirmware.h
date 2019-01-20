@@ -5,9 +5,6 @@
 #define CHARACTERISTIC_UUID_RX "80c78362-e3f9-11e8-9f32-f2801f1b9fd1"
 #define CHARACTERISTIC_UUID_TX "80c784ac-e3f9-11e8-9f32-f2801f1b9fd1"
 
-// Pin Defines
-#define EEPROM_SIZE 1000
-
 // Global Variables
 BLEServer *pServer = NULL;
 BLECharacteristic * pTxCharacteristic;

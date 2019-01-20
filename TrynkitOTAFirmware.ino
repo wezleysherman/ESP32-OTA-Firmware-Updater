@@ -13,7 +13,31 @@ void setup() {
 }
 
 void loop() {
+  if (deviceConnected) {
+    // bluetooth stack will go into congestion, if too many packets are sent
+    if(transmit == true) {
+      pTxCharacteristic->setValue(out_buff, 5);
+      pTxCharacteristic->notify();
+      delay(10);
+      uint8_t empty[6];
+      transmit = false;
+      memcpy(out_buff, empty, sizeof(empty));
+    }
+  }
+
+  // disconnecting
+  if (!deviceConnected && oldDeviceConnected) {
+    delay(500); // give the bluetooth stack the chance to get things ready
+    pServer->startAdvertising(); // restart advertising
+    oldDeviceConnected = deviceConnected;
+    image = "";
+  }
   
+  // connecting
+  if (deviceConnected && !oldDeviceConnected) {
+    image = "";
+    oldDeviceConnected = deviceConnected;
+  }
 }
 
 void initBLE() {
@@ -63,13 +87,16 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
     if(receiveImage == true) {
       image += input;
       if(image.substring(image.length()-5, image.length()).equals("0x0FC")) {
+        transmitOut("0x0FC");
+        image = image.substring(0, image.length()-5);
+        //write to second partition
+        //jump to second partition
         return;
       }
     }
 
     // Check for commands
     if(input.equals("0x0FA")) { // Flash via BLE
-      transmitOut("0x0FB");
       receiveImage = true;
     }
   }
