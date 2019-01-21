@@ -1,6 +1,7 @@
 #include <BLEDevice.h>
 #include <BLE2902.h>
 #include <BLEServer.h>
+#include <esp_partition.h>
 #include "ArduinoJson.h"
 #include "ReceiveCallBack.h"
 #include "TrynkitOTAFirmware.h"
@@ -58,6 +59,18 @@ void deinitBLE() {
   esp_bt_controller_disable();
   esp_bt_controller_deinit();
   esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+}
+
+void flashFirmware(const char* partName) {
+  //find "app1" partition
+  const esp_partition_t* part = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
+  if (part == NULL)
+    return;
+}
+
+void writeFirmware(esp_partition_t* part, uint32_t addr, uint32_t partSize) {
+  esp_partition_erase_range(part, addr, partSize); //erase "app1" partition
+  esp_partition_write(part, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
 }
 
 void reset() {
