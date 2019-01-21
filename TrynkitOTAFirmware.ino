@@ -1,9 +1,3 @@
-#include <BLEDevice.h>
-#include <BLE2902.h>
-#include <BLEServer.h>
-#include <esp_partition.h>
-#include "ArduinoJson.h"
-#include "ReceiveCallBack.h"
 #include "TrynkitOTAFirmware.h"
 
 void setup() {
@@ -11,6 +5,10 @@ void setup() {
 
   // Init BLE
   initBLE();
+
+  //find "app1" partition
+  const char* partName = "app1";
+  PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
 }
 
 void loop() {
@@ -61,16 +59,9 @@ void deinitBLE() {
   esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
 }
 
-void flashFirmware(const char* partName) {
-  //find "app1" partition
-  const esp_partition_t* part = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
-  if (part == NULL)
-    return;
-}
-
-void writeFirmware(esp_partition_t* part, uint32_t addr, uint32_t partSize) {
-  esp_partition_erase_range(part, addr, partSize); //erase "app1" partition
-  esp_partition_write(part, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
+void writeFirmware(uint32_t addr, uint32_t partSize) {
+  esp_partition_erase_range(PART, addr, partSize); //erase "app1" partition
+  esp_partition_write(PART, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
 }
 
 void reset() {
@@ -102,9 +93,16 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
       if(image.substring(image.length()-5, image.length()).equals("0x0FC")) {
         transmitOut("0x0FC");
         image = image.substring(0, image.length()-5);
-        //write to second partition
-        //jump to second partition
+        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+        updateCount++;
         return;
+      }
+      //final block to be written
+      else if (image.substring(image.length()-5, image.length()).equals("0x0FD")) {
+        transmitOut("0x0FD");
+        image = image.substring(0, image.length()-5);
+        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+        //jump to second partition
       }
     }
 

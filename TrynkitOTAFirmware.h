@@ -1,3 +1,10 @@
+#include <BLEDevice.h>
+#include <BLE2902.h>
+#include <BLEServer.h>
+#include <esp_partition.h>
+#include "ArduinoJson.h"
+#include "ReceiveCallBack.h"
+
 // BLE UUID's for Trynkit Device
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
@@ -20,11 +27,13 @@ uint8_t out_buff[7];
 bool receiveImage = false;
 bool transmit = false;
 String image = ""; // image to flash
-bool fetchingOTA = false;
 bool oldDeviceConnected = false;
+uint8_t updateCount = 0; //increment for every write and flush of the update
+const uint32_t UPDATE_SIZE = 100000;
+const esp_partition_t* PART;
 
 // Method defines
 void initBLE();
 void deinitBLE();
 void reset();
-void flashFirmware();
+void writeFirmware(esp_partition_t* part, uint32_t addr, uint32_t partSize);
