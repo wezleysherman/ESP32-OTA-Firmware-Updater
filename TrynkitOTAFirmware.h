@@ -1,7 +1,7 @@
 #include <BLEDevice.h>
 #include <BLE2902.h>
 #include <BLEServer.h>
-#include <esp_partition.h>
+#include <Update.h>
 #include "ArduinoJson.h"
 #include "ReceiveCallBack.h"
 
@@ -13,10 +13,10 @@
 #define CHARACTERISTIC_UUID_TX "80c784ac-e3f9-11e8-9f32-f2801f1b9fd1"
 
 //Partition characteristics
-#define APP0_ADDR 0x10000
+/*#define APP0_ADDR 0x10000
 #define APP0_SIZE 0x1C0000
 #define APP1_ADDR 0x1D0000
-#define APP1_SIZE 0x1C0000
+#define APP1_SIZE 0x1C0000*/
 
 // Global Variables
 BLEServer *pServer = NULL;

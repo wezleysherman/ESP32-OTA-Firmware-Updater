@@ -6,9 +6,11 @@ void setup() {
   // Init BLE
   initBLE();
 
-  //find "app1" partition
+  //find "app1" partition and set it as the boot partition
   const char* partName = "app1";
   PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
+
+  Update.begin(UPDATE_SIZE_UNKNOWN);
 }
 
 void loop() {
@@ -59,14 +61,14 @@ void deinitBLE() {
   esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
 }
 
-void writeFirmware(uint32_t addr, uint32_t partSize) {
+/*void writeFirmware(uint32_t addr, uint32_t partSize) {
   esp_partition_erase_range(PART, addr, partSize); //erase "app1" partition
   esp_partition_write(PART, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
 }
 
 void reset() {
   ESP.restart();
-}
+}*/
 
 void MyServerCallbacks::onConnect(BLEServer* pServer) {
   deviceConnected = true;
@@ -93,7 +95,8 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
       if(image.substring(image.length()-5, image.length()).equals("0x0FC")) {
         transmitOut("0x0FC");
         image = image.substring(0, image.length()-5);
-        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+        Update.write((uint8_t)(image), image.length());
+        //writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
         updateCount++;
         return;
       }
@@ -101,8 +104,8 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
       else if (image.substring(image.length()-5, image.length()).equals("0x0FD")) {
         transmitOut("0x0FD");
         image = image.substring(0, image.length()-5);
-        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
-        //jump to second partition
+        //writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+        Update.end();
       }
     }
 
