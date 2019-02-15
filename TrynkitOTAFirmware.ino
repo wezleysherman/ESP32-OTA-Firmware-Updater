@@ -8,9 +8,12 @@ void setup() {
   // Init BLE
   initBLE();
 
+/*
   //find "app1" partition
   const char* partName = "app1";
-  PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
+  PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);*/
+
+  Update.begin();
 }
 
 void loop() {
@@ -65,7 +68,7 @@ void deinitBLE() {
   esp_bt_controller_deinit();
   esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
 }
-
+/*
 void writeFirmware(uint32_t addr, uint32_t partSize) {
   Serial.println("[DEBUG] Write Firmware");
   esp_partition_erase_range(PART, addr, partSize); //erase "app1" partition
@@ -75,7 +78,7 @@ void writeFirmware(uint32_t addr, uint32_t partSize) {
 void reset() {
   ESP.restart();
 }
-
+*/
 void MyServerCallbacks::onConnect(BLEServer* pServer) {
   deviceConnected = true;
 }
@@ -86,7 +89,6 @@ void MyServerCallbacks::onDisconnect(BLEServer* pServer) {
 
 // Handles BLE receives for images and flashing
 void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
-  Serial.println("[DEBUG] Received Image");
   std::string rxVal = pCharacteristic->getValue();
   String input = "";
   if(rxVal.length() > 0) {
@@ -98,36 +100,40 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
 
     // BLE Flashing mode
     if(receiveImage == true) {
-      image += input;
-      if(image.substring(image.length()-5, image.length()).equals("0x0ZC")) {
-        Serial.println("[DEBUG] Received 0x0ZC");
-        image = image.substring(0, image.length()-5);
-        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
-        //check if chunk is corrupt
-        transmitOut("0x0FS");
-        return;
+      if (input.equals("0x0ZD")) {
+        Serial.println("[DEBUG] Update complete");
+        Update.end();
       }
-      //final block to be written
-      else if (image.substring(image.length()-5, image.length()).equals("0x0ZD")) {
-        Serial.println("[DEBUG] Received 0x0ZD");
-        image = image.substring(0, image.length()-5);
-        writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+      else if (image.length() <= 50000){
+        image += input;
+        transmitOut("0x0ZS");
+      }
+      else {
+        //image = input;
+        //Serial.println("[DEBUG] Received 0x0ZC");
+        //image = image.substring(0, image.length()-5);
+        //writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(input));
+        
+        Update.write((uint8_t*)(&image), image.length());
         //check if chunk is corrupt
-        transmitOut("0x0FS");
-        //jump to second partition
+        transmitOut("0x0ZS");
+        Serial.println("[DEBUG] Transmit 0x0ZS");
+        image = "";
+        return;
       }
     }
 
     // Check for commands
-    if(input.equals("0x0FA")) { // Flash via BLE
-      Serial.println("[DEBUG] Received 0x0FA");
+    if(input.equals("0x0ZU")) { // Flash via BLE
+      Serial.println("[DEBUG] Received 0x0ZU");
       receiveImage = true;
+      transmitOut("0x0ZR");
+      Serial.println("[DEBUG] Transmit 0x0ZR");
     }
   }
 }
 
 void ReceiveCallBack::transmitOut(char* output) {
-  Serial.println("[DEBUG] Transmit Out");
   //memcpy(out_buff, output, sizeof(output));
   for(int i = 0; i < sizeof(out_buff); i++) {
     out_buff[i] = uint8_t(output[i]);
