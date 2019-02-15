@@ -1,8 +1,10 @@
 #include "TrynkitOTAFirmware.h"
 
+int flag = 0;
+
 void setup() {
   Serial.begin(115200);
-
+  Serial.println("[DEBUG] Start");
   // Init BLE
   initBLE();
 
@@ -14,6 +16,10 @@ void setup() {
 void loop() {
   if (deviceConnected) {
     // bluetooth stack will go into congestion, if too many packets are sent
+    if (!flag) {
+      Serial.println(ESP.getFreeHeap());
+      flag = 1;
+    }
     if(transmit == true) {
       pTxCharacteristic->setValue(out_buff, 5);
       pTxCharacteristic->notify();
@@ -40,6 +46,7 @@ void loop() {
 }
 
 void initBLE() {
+  Serial.println("[DEBUG] Init BLE");
   BLEDevice::init("Trynkit Husky");
   pServer = BLEDevice::createServer();
   // Set up callback function for whenever something is received.
@@ -60,6 +67,7 @@ void deinitBLE() {
 }
 
 void writeFirmware(uint32_t addr, uint32_t partSize) {
+  Serial.println("[DEBUG] Write Firmware");
   esp_partition_erase_range(PART, addr, partSize); //erase "app1" partition
   esp_partition_write(PART, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
 }
@@ -78,6 +86,7 @@ void MyServerCallbacks::onDisconnect(BLEServer* pServer) {
 
 // Handles BLE receives for images and flashing
 void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
+  Serial.println("[DEBUG] Received Image");
   std::string rxVal = pCharacteristic->getValue();
   String input = "";
   if(rxVal.length() > 0) {
@@ -90,31 +99,35 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
     // BLE Flashing mode
     if(receiveImage == true) {
       image += input;
-      if(image.substring(image.length()-5, image.length()).equals("0x0FC")) {
-        transmitOut("0x0FC");
+      if(image.substring(image.length()-5, image.length()).equals("0x0ZC")) {
+        Serial.println("[DEBUG] Received 0x0ZC");
         image = image.substring(0, image.length()-5);
         writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
-        updateCount++;
+        //check if chunk is corrupt
+        transmitOut("0x0FS");
         return;
       }
       //final block to be written
-      else if (image.substring(image.length()-5, image.length()).equals("0x0FD")) {
-        transmitOut("0x0FD");
+      else if (image.substring(image.length()-5, image.length()).equals("0x0ZD")) {
+        Serial.println("[DEBUG] Received 0x0ZD");
         image = image.substring(0, image.length()-5);
         writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(image));
+        //check if chunk is corrupt
+        transmitOut("0x0FS");
         //jump to second partition
       }
     }
 
     // Check for commands
     if(input.equals("0x0FA")) { // Flash via BLE
+      Serial.println("[DEBUG] Received 0x0FA");
       receiveImage = true;
     }
   }
 }
 
 void ReceiveCallBack::transmitOut(char* output) {
-  //Serial.println(output);
+  Serial.println("[DEBUG] Transmit Out");
   //memcpy(out_buff, output, sizeof(output));
   for(int i = 0; i < sizeof(out_buff); i++) {
     out_buff[i] = uint8_t(output[i]);
