@@ -3,17 +3,17 @@
 int flag = 0;
 
 void setup() {
+  if (EEPROM.readByte(511)) { // check update flag
+    const char* partName = "firm";
+    PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);
+    esp_ota_set_boot_partition(PART);
+    ESP.restart(); // restart ESP
+  }
+  
   Serial.begin(115200);
   Serial.println("[DEBUG] Start");
   // Init BLE
   initBLE();
-
-/*
-  //find "app1" partition
-  const char* partName = "app1";
-  PART = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partName);*/
-
-  Update.begin();
 }
 
 void loop() {
@@ -68,17 +68,7 @@ void deinitBLE() {
   esp_bt_controller_deinit();
   esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
 }
-/*
-void writeFirmware(uint32_t addr, uint32_t partSize) {
-  Serial.println("[DEBUG] Write Firmware");
-  esp_partition_erase_range(PART, addr, partSize); //erase "app1" partition
-  esp_partition_write(PART, (addr - APP1_ADDR), (void*)&image, sizeof(image)); //write new firmware
-}
 
-void reset() {
-  ESP.restart();
-}
-*/
 void MyServerCallbacks::onConnect(BLEServer* pServer) {
   deviceConnected = true;
 }
@@ -100,34 +90,42 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
 
     // BLE Flashing mode
     if(receiveImage == true) {
-      if (input.equals("0x0ZD")) {
+      if (input.equals("0x0ZD")) { // update complete
         Serial.println("[DEBUG] Update complete");
-        Update.end();
+        if (esp_partition_verify(PART) != NULL) { // verify firmware partition
+          EEPROM.writeByte(511, 0); // set update flag
+          EEPROM.commit();
+        }
+        Update.end(); // end update
+        ESP.restart(); // restart ESP
       }
-      else if (image.length() <= 50000){
+      else if (image.length() <= UPDATE_SIZE){
         image += input;
         transmitOut("0x0ZS");
+        return;
       }
       else {
-        //image = input;
-        //Serial.println("[DEBUG] Received 0x0ZC");
-        //image = image.substring(0, image.length()-5);
-        //writeFirmware((APP1_ADDR + (UPDATE_SIZE * updateCount)), sizeof(input));
-        
-        Update.write((uint8_t*)(&image), image.length());
-        //check if chunk is corrupt
-        transmitOut("0x0ZS");
+        Serial.println(ESP.getFreeHeap());
+        char buf[image.length()];
+        image.toCharArray(buf, image.length()); // string to char array
+        image = ""; // dump string buf
+        Serial.println(ESP.getFreeHeap());
+        Update.write(reinterpret_cast<uint8_t*>(buf), image.length());
+        if (!Update.hasError())
+          transmitOut("0x0ZS"); //success
+        else
+          transmitOut("0x0ZE"); //corrupt chunk
         Serial.println("[DEBUG] Transmit 0x0ZS");
-        image = "";
         return;
       }
     }
 
-    // Check for commands
-    if(input.equals("0x0ZU")) { // Flash via BLE
+    // Check for start command
+    if(input.equals("0x0ZU")) { 
       Serial.println("[DEBUG] Received 0x0ZU");
       receiveImage = true;
-      transmitOut("0x0ZR");
+      Update.begin();
+      transmitOut("0x0ZR"); // transmit ready
       Serial.println("[DEBUG] Transmit 0x0ZR");
     }
   }
