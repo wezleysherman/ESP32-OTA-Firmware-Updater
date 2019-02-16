@@ -1,8 +1,10 @@
+#ifndef TRYNKITOTAFIRMWARE_H
+#define TRYNKITOTAFIRMWARE_H
+
 #include <BLEDevice.h>
 #include <BLE2902.h>
 #include <BLEServer.h>
-#include <esp_partition.h>
-#include "ArduinoJson.h"
+#include <Update.h>
 #include "ReceiveCallBack.h"
 
 // BLE UUID's for Trynkit Device
@@ -14,9 +16,9 @@
 
 //Partition characteristics
 #define APP0_ADDR 0x10000
-#define APP0_SIZE 0x1C0000
-#define APP1_ADDR 0x1D0000
-#define APP1_SIZE 0x1C0000
+#define APP0_SIZE 0x113E10
+#define APP1_ADDR 0x123E10
+#define APP1_SIZE 0x251430
 
 // Global Variables
 BLEServer *pServer = NULL;
@@ -29,7 +31,7 @@ bool transmit = false;
 String image = ""; // image to flash
 bool oldDeviceConnected = false;
 uint8_t updateCount = 0; //increment for every write and flush of the update
-const uint32_t UPDATE_SIZE = 100000;
+const uint32_t UPDATE_SIZE = 1000;
 const esp_partition_t* PART;
 
 // Method defines
@@ -37,3 +39,5 @@ void initBLE();
 void deinitBLE();
 void reset();
 void writeFirmware(esp_partition_t* part, uint32_t addr, uint32_t partSize);
+
+#endif
