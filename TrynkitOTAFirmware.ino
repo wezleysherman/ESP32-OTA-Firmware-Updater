@@ -1,7 +1,5 @@
 #include "TrynkitOTAFirmware.h"
 
-int flag = 0;
-
 void setup() {
   if (EEPROM.readByte(511)) { // check update flag
     const char* partName = "firm";
@@ -111,10 +109,14 @@ void ReceiveCallBack::onWrite(BLECharacteristic *pCharacteristic) {
         image = ""; // dump string buf
         Serial.println(ESP.getFreeHeap());
         Update.write(reinterpret_cast<uint8_t*>(buf), image.length());
-        if (!Update.hasError())
+        if (!Update.hasError()) {
+          Serial.println("Wrote chunk!");
           transmitOut("0x0ZS"); //success
-        else
+        }
+        else {
+          Serial.println("Corrupt chunk!");
           transmitOut("0x0ZE"); //corrupt chunk
+        }
         Serial.println("[DEBUG] Transmit 0x0ZS");
         return;
       }
