@@ -29,7 +29,7 @@ bool transmit = false;
 String image = ""; // image to flash
 bool oldDeviceConnected = false;
 uint8_t updateCount = 0; //increment for every write and flush of the update
-const uint32_t UPDATE_SIZE = 4800;
+const uint32_t UPDATE_SIZE = 960;
 const esp_partition_t* PART;
 int flag = 0;
 
