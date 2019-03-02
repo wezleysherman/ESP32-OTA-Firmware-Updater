@@ -17,24 +17,26 @@
 #define CHARACTERISTIC_UUID_TX "80c784ac-e3f9-11e8-9f32-f2801f1b9fd1"
 
 // Global Variables
+const bool DO_DEBUG = true;
+const uint32_t UPDATE_SIZE = 960;
+const esp_partition_t* PART;
+
 BLEServer *pServer = NULL;
 BLECharacteristic * pTxCharacteristic;
-
 volatile int dir = 0;
 volatile int indexBlink = 0;
 bool deviceConnected = false;
-uint8_t out_buff[7];
+bool oldDeviceConnected = false;
 bool receiveImage = false;
 bool transmit = false;
-String image = ""; // image to flash
-bool oldDeviceConnected = false;
-const uint32_t UPDATE_SIZE = 960;
-const esp_partition_t* PART;
-std::vector<uint8_t> fImage;
+std::vector<uint8_t> fImage; // image to flash
+uint8_t out_buff[7];
 
 // Method defines
 void initBLE();
 void deinitBLE();
 void reset();
+void updateLED(void* pvParameters);
+void finishUpdate();
 
 #endif
