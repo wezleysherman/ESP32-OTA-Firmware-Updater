@@ -8,6 +8,15 @@
 
 #include "TrynkitOTAFirmware.h"
 
+void initBLE();
+void deinitBLE();
+void onWrite(BLECharacteristic *pCharacteristic);
+void transmitOut(char* output);
+void onConnect(BLEServer* pServer);
+void onDisconnect(BLEServer* pServer);
+void updateLED(void *pvParameters);
+void finishUpdate();
+
 /**
  * Initializes serial and LED output.
  */
